@@ -29,6 +29,9 @@ public class Factory {
     @Column(name = "address")
     private String address;
 
+    @Column(name = "description")
+    private String description;
+
     @Column(name = "employee_count")
     private Integer employeeCount;
 

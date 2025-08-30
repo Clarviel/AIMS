@@ -96,6 +96,26 @@ public interface UserMapper {
             "GROUP BY department")
     List<Map<String, Object>> groupByDepartment(@Param("factoryId") String factoryId);
 
+    // 统计所有用户数量
+    @Select("SELECT COUNT(*) FROM user")
+    long countAllUsers();
+
+    // 统计所有活跃用户数量
+    @Select("SELECT COUNT(*) FROM user WHERE is_active = 1")
+    long countAllActiveUsers();
+
+    // 统计指定时间后创建的用户数量
+    @Select("SELECT COUNT(*) FROM user WHERE created_at >= #{since}")
+    long countUsersCreatedAfter(@Param("since") LocalDateTime since);
+
+    // 按角色统计所有用户
+    @Select("SELECT role AS roleCode, COUNT(*) AS count FROM user WHERE is_active = 1 GROUP BY role")
+    List<Map<String, Object>> groupAllByRole();
+
+    // 获取指定工厂的所有用户
+    @Select("SELECT * FROM user WHERE factory_id = #{factoryId} ORDER BY created_at DESC")
+    List<User> getUsersByFactoryId(@Param("factoryId") String factoryId);
+
 
 
 }

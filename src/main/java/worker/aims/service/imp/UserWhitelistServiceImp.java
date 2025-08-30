@@ -2,9 +2,7 @@ package worker.aims.service.imp;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import worker.aims.DTO.GetWhitelistRequest;
-import worker.aims.DTO.UpdateWhitelistRequest;
-import worker.aims.entity.User;
+
 import worker.aims.entity.UserWhitelist;
 import worker.aims.mapper.UserWhitelistMapper;
 import worker.aims.service.ex.*;
@@ -55,18 +53,21 @@ public class UserWhitelistServiceImp implements UserWhitelistService {
     }
 
     @Override
-    public Map<String, Object> addWhitelist(String factoryId, Integer userId, List<String> phoneNumbers, LocalDateTime expiresAt) {
+    public Map<String, Object> addWhitelist(String factoryId, Integer userId, String phoneNumbers, LocalDateTime expiresAt) {
+        // 解析手机号列表，支持逗号分隔或空格分隔
+        List<String> phoneList = Arrays.asList(phoneNumbers.split("[,，\\s]+"));
+        
         Set<String> existingSet = new HashSet<>(userWhitelistMapper.findExistingPhoneNumbers(factoryId));
-        List<String> duplicates = phoneNumbers.stream()
+        List<String> duplicates = phoneList.stream()
                 .filter(existingSet::contains)
                 .collect(Collectors.toList());
         if (!duplicates.isEmpty()) {
             throw new NameDuplicateException("以下手机号已在白名单中: " + String.join(", ", duplicates));
         }
-        List<UserWhitelist> whitelist = phoneNumbers.stream().map(phone -> {
+        List<UserWhitelist> whitelist = phoneList.stream().map(phone -> {
             UserWhitelist w = new UserWhitelist();
             w.setFactoryId(factoryId);
-            w.setPhoneNumber(phone);
+            w.setPhoneNumber(phone.trim());
             w.setAddedByUserId(userId);
             w.setExpiresAt(expiresAt);
             w.setStatus("PENDING");
@@ -94,24 +95,23 @@ public class UserWhitelistServiceImp implements UserWhitelistService {
     }
 
     @Override
-    public Map<String, Object> getWhitelist(GetWhitelistRequest request) {
-        int page = request.getPage() != null ? request.getPage() : 1;
-        int pageSize = request.getPageSize() != null ? request.getPageSize() : 10;
+    public Map<String, Object> getWhitelist(Map<String, Object> params) {
+        String factoryId = (String) params.get("factoryId");
+        Integer page = (Integer) params.get("page");
+        Integer pageSize = (Integer) params.get("pageSize");
+        String status = (String) params.get("status");
+        String search = (String) params.get("search");
+        
+        page = page != null ? page : 1;
+        pageSize = pageSize != null ? pageSize : 10;
         int offset = (page - 1) * pageSize;
+        
         // 查询总数
-        int total = userWhitelistMapper.countWhitelist(
-                request.getFactoryId(),
-                request.getStatus(),
-                request.getSearch()
-        );
+        int total = userWhitelistMapper.countWhitelist(factoryId, status, search);
+        
         // 分页数据
-        List<UserWhitelist> items = userWhitelistMapper.findWhitelist(
-                request.getFactoryId(),
-                request.getStatus(),
-                request.getSearch(),
-                offset,
-                pageSize
-        );
+        List<UserWhitelist> items = userWhitelistMapper.findWhitelist(factoryId, status, search, offset, pageSize);
+        
         Map<String, Object> pagination = new HashMap<>();
         pagination.put("page", page);
         pagination.put("pageSize", pageSize);
@@ -119,6 +119,7 @@ public class UserWhitelistServiceImp implements UserWhitelistService {
         pagination.put("totalPages", (int) Math.ceil((double) total / pageSize));
         pagination.put("hasNext", offset + pageSize < total);
         pagination.put("hasPrev", page > 1);
+        
         Map<String, Object> result = new HashMap<>();
         result.put("items", items);
         result.put("pagination", pagination);
@@ -127,22 +128,22 @@ public class UserWhitelistServiceImp implements UserWhitelistService {
 
     // 更新白名单
     @Override
-    public UserWhitelist updateWhitelist(String factoryId, UpdateWhitelistRequest request) {
-        UserWhitelist whitelist = userWhitelistMapper.findByIdAndFactoryId(request.getId(), factoryId);
+    public UserWhitelist updateWhitelist(String factoryId, Map<String, Object> updateParams) {
+        Integer id = (Integer) updateParams.get("id");
+        String status = (String) updateParams.get("status");
+        LocalDateTime expiresAt = (LocalDateTime) updateParams.get("expiresAt");
+        
+        UserWhitelist whitelist = userWhitelistMapper.findByIdAndFactoryId(id, factoryId);
         if (whitelist == null) {
             throw new NotFoundException("白名单记录不存在");
         }
 
-        int rows = userWhitelistMapper.updateWhitelist(
-                request.getId(),
-                request.getStatus(),
-                request.getExpiresAt()
-        );
+        int rows = userWhitelistMapper.updateWhitelist(id, status, expiresAt);
         if (rows != 1) {
             throw new UpdateException("更新白名单状态失败");
         }
 
-        return userWhitelistMapper.findByIdAndFactoryId(request.getId(), factoryId);
+        return userWhitelistMapper.findByIdAndFactoryId(id, factoryId);
     }
 
     // 删除白名单

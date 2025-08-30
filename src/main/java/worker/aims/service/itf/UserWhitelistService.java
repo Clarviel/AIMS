@@ -1,7 +1,5 @@
 package worker.aims.service.itf;
 
-import worker.aims.DTO.GetWhitelistRequest;
-import worker.aims.DTO.UpdateWhitelistRequest;
 import worker.aims.entity.UserWhitelist;
 
 import java.time.LocalDateTime;
@@ -14,11 +12,11 @@ public interface UserWhitelistService {
 
     UserWhitelist getUserWhitelistByFactoryIdAndPhoneNumber(String factoryId, String phoneNumber);
 
-    Map<String, Object> addWhitelist(String factoryId, Integer userId, List<String> phoneNumbers, LocalDateTime expiresAt);
+    Map<String, Object> addWhitelist(String factoryId, Integer userId, String phoneNumbers, LocalDateTime expiresAt);
 
-    Map<String, Object> getWhitelist(GetWhitelistRequest request);
+    Map<String, Object> getWhitelist(Map<String, Object> params);
 
-    UserWhitelist updateWhitelist(String factoryId, UpdateWhitelistRequest request);
+    UserWhitelist updateWhitelist(String factoryId, Map<String, Object> updateParams);
 
     void deleteWhitelist(String factoryId, Integer id);
 
